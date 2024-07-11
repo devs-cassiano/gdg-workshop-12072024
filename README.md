@@ -28,3 +28,12 @@ Este código de exemplo de um RAT permite ao servidor enviar um comando ao clien
 - Recebe a captura de tela enviada pelo cliente e a exibe 
 #### Cliente (Windows)
 - O cliente se conecta ao servidor, aguarda comandos e, ao receber o comando específico, captura a tela e envia a imagem para o servidor.
+
+## DLL Process Injection
+
+Este código é um exemplo de injeção de DLL em um processo do mspaint no Windows.
+
+- Link para o código: [dll_process_injection](dll_process_injection)
+
+#### Funcionamento
+- O executável injetor da dll aguarda a abertura do processo do mspaint e exibe uma janela com um aviso.
