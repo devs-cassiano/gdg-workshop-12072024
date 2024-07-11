@@ -1,6 +1,11 @@
 # Workshop GDG Sec Day 2024 - Explorando o Mundo do Desenvolvimento de Malwares
 
-Este repositório contém dois exemplos de códigos de Remote Access Tool (RAT) escritos em C. O primeiro código permite a abertura remota do Notepad em um computador Windows, enquanto o segundo código obtém capturas de tela da tela de um computador Windows e as envia para um servidor Linux.
+Este repositório contém dois exemplos de códigos de Remote Access Tool (RAT) escritos em C. 
+- O primeiro exemplo permite a abertura remota do Notepad em um computador Windows.
+- O segundo exemplo obtém capturas de tela da tela de um computador Windows e as envia para um servidor Linux. 
+- O terceiro exemplo simula a injeção de DLL em um processo no Windows
+
+Obs: Todos os códigos foram compilados no S.O. Linux ParrotOS.
 
 ## Abrir o Notepad Remotamente
 
