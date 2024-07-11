@@ -21,9 +21,9 @@ Comandos para enviar ao cliente após estabelecer comunicações:
 
 - Execute o servidor no sistema Linux:
 
-```./server```
+```./notepad_server```
 
-- O servidor agora está aguardando conexões de clientes.
+- O servidor fica aguardando conexões de clientes.
 
 ### Cliente: 
 
