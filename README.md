@@ -1,4 +1,4 @@
-# Workshop - Explorando o Mundo do Desenvolvimento de Malwares
+# Workshop GDG - Explorando o Mundo do Desenvolvimento de Malwares
 
 Este repositório contém dois exemplos de códigos de Remote Access Tool (RAT) escritos em C. O primeiro código permite a abertura remota do Notepad em um computador Windows, enquanto o segundo código obtém capturas de tela da tela de um computador Windows e as envia para um servidor Linux.
 
