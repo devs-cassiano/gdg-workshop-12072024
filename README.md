@@ -7,7 +7,8 @@ Este repositório contém dois exemplos de códigos de Remote Access Tool (RAT) 
 ### Descrição
 
 Este código exemplifica um RAT permite ao servidor enviar um comando ao cliente para abrir o Notepad remotamente em um computador Windows. O cliente recebe o comando e executa a ação de abrir o Notepad.
-Estrutura do Código
+
+- Link para o código: [remote_notepad](remote_notepad)
 
 #### Servidor (Linux)
 - O servidor aguarda conexões de clientes e envia o comando para abrir o Notepad.
@@ -19,6 +20,8 @@ Estrutura do Código
 ### Descrição
 
 Este código de exemplo de um RAT permite ao servidor enviar um comando ao cliente para capturar a tela de um computador Windows. As capturas de tela são então enviadas do cliente para o servidor, onde podem ser visualizadas.
+
+- Link para o código: [remote_screen](remote_screen)
 
 #### Servidor (Linux)
 - O servidor aguarda conexões de clientes e envia o comando para capturar a tela.
