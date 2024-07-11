@@ -49,7 +49,7 @@ int main() {
         printf("Command received: %s\n", buffer);
 
         if (strcmp(buffer, "notepad") == 0) {
-            system("notepad");
+            system("notepad.exe");
         } else if (strcmp(buffer, "exit") == 0) {
             break;
         }
