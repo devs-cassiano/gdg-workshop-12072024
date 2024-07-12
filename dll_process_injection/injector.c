@@ -1,91 +1,116 @@
-#include <windows.h>
-#include <tlhelp32.h>
-#include <stdio.h>
+#include <windows.h> // Biblioteca principal da API do Windows, usada para manipulação de janelas, processos, threads e outras funcionalidades do sistema operacional.
+#include <tlhelp32.h> // Biblioteca para criar snapshots de processos/snapshots. Utilizada para obter informações sobre os processos e threads do sistema.
+#include <stdio.h> // Biblioteca padrão de entrada e saída, usada para funções como printf().
 
-void HandleError(const char* message) {
-    fprintf(stderr, "%s: %d\n", message, GetLastError());
-    exit(1);
-}
 
+// Função para obter o ID do processo pelo nome
 DWORD GetProcessIdByName(const char* processName) {
-    PROCESSENTRY32 pe32;
-    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (hSnapshot == INVALID_HANDLE_VALUE) {
-        HandleError("CreateToolhelp32Snapshot failed");
+    PROCESSENTRY32 processEntry; // Estrutura que armazena informações sobre um processo.
+    processEntry.dwSize = sizeof(PROCESSENTRY32); // Define o tamanho da estrutura PROCESSENTRY32.
+
+    // Cria um snapshot de todos os processos do sistema.
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        return 0; // Retorna 0 se a criação do snapshot falhar.
     }
 
-    pe32.dwSize = sizeof(PROCESSENTRY32);
-    if (!Process32First(hSnapshot, &pe32)) {
-        CloseHandle(hSnapshot);
-        HandleError("Process32First failed");
+    // Obtém o primeiro processo do snapshot.
+    if (Process32First(snapshot, &processEntry)) {
+        do {
+            // Compara o nome do processo atual com o nome fornecido.
+            if (strcmp(processEntry.szExeFile, processName) == 0) {
+                // Se o processo for encontrado, fecha o snapshot e retorna o ID do processo.
+                CloseHandle(snapshot);
+                return processEntry.th32ProcessID;
+            }
+        } while (Process32Next(snapshot, &processEntry)); // Itera sobre os processos no snapshot.
     }
 
-    do {
-        if (strcmp(pe32.szExeFile, processName) == 0) {
-            CloseHandle(hSnapshot);
-            return pe32.th32ProcessID;
-        }
-    } while (Process32Next(hSnapshot, &pe32));
-
-    CloseHandle(hSnapshot);
+    // Fecha o snapshot e retorna 0 se o processo não for encontrado.
+    CloseHandle(snapshot);
     return 0;
 }
 
+// Função para injetar uma DLL em um processo.
 void InjectDLL(DWORD processId, const char* dllPath) {
-    HANDLE hProcess = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, FALSE, processId);
+    // Abre o processo com permissões totais.
+    HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
     if (hProcess == NULL) {
-        HandleError("OpenProcess failed");
+        printf("Failed to open target process.\n");
+        return;
     }
 
-    LPVOID pRemoteMemory = VirtualAllocEx(hProcess, NULL, strlen(dllPath) + 1, MEM_COMMIT, PAGE_READWRITE);
-    if (pRemoteMemory == NULL) {
-        HandleError("VirtualAllocEx failed");
+    // Aloca memória no processo alvo para armazenar o caminho da DLL.
+    LPVOID pDllPath = VirtualAllocEx(hProcess, NULL, strlen(dllPath) + 1, MEM_COMMIT, PAGE_READWRITE);
+    if (pDllPath == NULL) {
+        printf("Failed to allocate memory in target process.\n");
+        CloseHandle(hProcess);
+        return;
     }
 
-    if (!WriteProcessMemory(hProcess, pRemoteMemory, dllPath, strlen(dllPath) + 1, NULL)) {
-        HandleError("WriteProcessMemory failed");
+    // Escreve o caminho da DLL na memória alocada do processo alvo.
+    if (!WriteProcessMemory(hProcess, pDllPath, (LPVOID)dllPath, strlen(dllPath) + 1, NULL)) {
+        printf("Failed to write DLL path to target process memory.\n");
+        VirtualFreeEx(hProcess, pDllPath, 0, MEM_RELEASE);
+        CloseHandle(hProcess);
+        return;
     }
 
-    LPVOID pLoadLibrary = (LPVOID)GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
+    // Obtém um handle para o módulo Kernel32, que contém a função LoadLibraryA.
+    HMODULE hKernel32 = GetModuleHandle("Kernel32");
+    if (hKernel32 == NULL) {
+        printf("Failed to get handle for Kernel32.\n");
+        VirtualFreeEx(hProcess, pDllPath, 0, MEM_RELEASE);
+        CloseHandle(hProcess);
+        return;
+    }
+
+    // Obtém o endereço da função LoadLibraryA do Kernel32.
+    LPTHREAD_START_ROUTINE pLoadLibrary = (LPTHREAD_START_ROUTINE)GetProcAddress(hKernel32, "LoadLibraryA");
     if (pLoadLibrary == NULL) {
-        HandleError("GetProcAddress failed");
+        printf("Failed to get address for LoadLibraryA.\n");
+        VirtualFreeEx(hProcess, pDllPath, 0, MEM_RELEASE);
+        CloseHandle(hProcess);
+        return;
     }
 
-    HANDLE hRemoteThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)pLoadLibrary, pRemoteMemory, 0, NULL);
-    if (hRemoteThread == NULL) {
-        HandleError("CreateRemoteThread failed");
+    // Cria um thread remoto no processo alvo para executar LoadLibraryA com o caminho da DLL.
+    HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, pLoadLibrary, pDllPath, 0, NULL);
+    if (hThread == NULL) {
+        printf("Failed to create remote thread in target process.\n");
+        VirtualFreeEx(hProcess, pDllPath, 0, MEM_RELEASE);
+        CloseHandle(hProcess);
+        return;
     }
 
-    WaitForSingleObject(hRemoteThread, INFINITE);
+    // Aguarda a conclusão da execução do thread remoto.
+    WaitForSingleObject(hThread, INFINITE);
 
-    VirtualFreeEx(hProcess, pRemoteMemory, 0, MEM_RELEASE);
-    CloseHandle(hRemoteThread);
+    // Libera a memória alocada e fecha os handles.
+    VirtualFreeEx(hProcess, pDllPath, 0, MEM_RELEASE);
+    CloseHandle(hThread);
     CloseHandle(hProcess);
 }
 
+// Função para esperar o MS Paint ser aberto e injetar a DLL.
 void WaitForMSPaintAndInject(const char* dllPath) {
     printf("Aguardando MS Paint ser aberto...\n");
     while (1) {
+        // Obtém o ID do processo do MS Paint.
         DWORD processId = GetProcessIdByName("mspaint.exe");
         if (processId != 0) {
             printf("Processo MS Paint encontrado: PID %lu\n", processId);
-            InjectDLL(processId, dllPath);
+            InjectDLL(processId, dllPath); // Injeta a DLL no processo do MS Paint.
             printf("DLL injetada com sucesso!\n");
-            break;
+            break; // Sai do loop após a injeção.
         }
-        Sleep(1000);  // Espera por 1 segundo antes de verificar novamente
+        Sleep(1000); // Espera por 1 segundo antes de verificar novamente.
     }
 }
 
+// Função principal.
 int main() {
-    const char* dllPath = "C:\\Users\\user\\Documents\\injection\\injected.dll";  // Caminho relativo para a DLL
-
-    // Verifica se a DLL existe no diretório atual
-    if (GetFileAttributes(dllPath) == INVALID_FILE_ATTRIBUTES) {
-        fprintf(stderr, "DLL não encontrada: %s\n", dllPath);
-        return 1;
-    }
-
-    WaitForMSPaintAndInject(dllPath);
+    const char* dllPath = "C:\\Users\\user\\Documents\\injection\\injected.dll"; // Caminho da DLL a ser injetada.
+    WaitForMSPaintAndInject(dllPath); // Chama a função para esperar o MS Paint e injetar a DLL.
     return 0;
 }

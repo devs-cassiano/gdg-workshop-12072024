@@ -42,3 +42,14 @@ Este código é um exemplo de injeção de DLL em um processo do mspaint no Wind
 
 #### Funcionamento
 - O executável injetor da dll aguarda a abertura do processo do mspaint e exibe uma janela com um aviso.
+
+## Roleta russa
+
+Este é um exemplo e código que lista e exclui arquivos aleatóriamente em um diretório.
+
+- Link para o código: [roulette](roulette)
+
+#### Funcionamento
+
+- O código é aberto no CMD ou Powershell e exclui um arquivo por vez aleatoriamente.
+
